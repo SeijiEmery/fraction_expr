@@ -36,7 +36,7 @@
 #include <iostream>
 
 struct Fraction {
-    int         n;
+    int    n;
     int    d;
 
     Fraction (int n = 0, int d = 1) : n(n), d(d) {
@@ -188,21 +188,21 @@ struct Fraction {
             std::cerr << "Assertion Failure: " << a << " == " << b << '\n';
     }
     template <typename Exception, typename F>
-    static auto assertThrows (const F& f, bool shouldThrow) {
+    static auto assertThrows (const F& f, bool shouldThrow = true) {
         try {
             f();
             if (shouldThrow)
                 std::cerr << "Assertion Failure: expected thrown exception " << '\n';
-        } catch (const Exception e) {
+        } catch (const Exception* e) {
             if (!shouldThrow)
                 std::cerr << "Assertion Failure: expected no exception, got " << e->what() << '\n';
+        } catch (const ParseException* e) {
+            if (shouldThrow)
+                std::cerr << "Assertion Failure: wrong exception thrown" << '\n';
+        } catch (std::exception* e) {
+            if (shouldThrow)
+                std::cerr << "Assertion Failure: wrong exception thrown" << '\n';
         }
-    }
-
-
-    template <typename E, typename R>
-    static R assertThrows (const R& result) {
-
     }
 
     #define RUN_TEST(test) std::cout << "\n\nRunning Test: " #test "\n"; test()
@@ -286,6 +286,7 @@ struct Fraction {
     DECL_EXCEPTION(UnbalancedRParen, "unbalanced ')'")
     DECL_EXCEPTION(UnbalancedExpr,   "unbalanced expr")
     DECL_EXCEPTION(InvalidOp,        "invalid op")
+    DECL_EXCEPTION(IntegerOverflow,  "integer overflow")
     #undef DECL_EXCEPTION
 
 protected:
@@ -295,8 +296,8 @@ protected:
             throw new Ex();
     }
     static void unittest_enforce () {
-        assertThrows<ExpectedNumber*>([](){ enforce<ExpectedNumber>(false); }, true);
-        assertThrows<ExpectedNumber*>([](){ enforce<ExpectedNumber>(true); }, false);
+        assertThrows<ExpectedNumber>([](){ enforce<ExpectedNumber>(false); }, true);
+        assertThrows<ExpectedNumber>([](){ enforce<ExpectedNumber>(true); }, false);
     }
 
     template <typename Ex>
@@ -344,38 +345,46 @@ protected:
             enforce<ExpectedNumber>((bool)is.get(c));
             sign = -1;
         }
+        // std::cout << "sign = " << sign;
 
         if (c == 'i') {     // "inf" case
             enforce<ExpectedNumber>(is.get(c) && c == 'n');
             enforce<ExpectedNumber>(is.get(c) && c == 'f');
+            // std::cout << " inf\n";
             return Fraction { sign, 0 };
         }
 
         // Otherwise, expect decimal numbers.
         enforce<ExpectedNumber>(isdigit(c));
 
-        int n = c;
+        int n = (c - '0');
+        // std::cout << " [" << c << "," << n << "]";
         while (is.get(c) && isdigit(c)) {
             n *= 10;
-            n += c;
+            n += (c - '0');
+            enforce<IntegerOverflow>(n >= 0);
+            // std::cout << "[" << c << "," << n << "]";
         }
+        // std::cout << " n = " << n << '\n';
+        
         if (!isdigit(c))
             is.unget();
 
         return Fraction { sign * n, 1 };
     }
     static void unittest_parseNumber () {
-        std::stringstream ss { "1 +2 -3 123 456 78912301 inf -inf +inf -120941421241241 "}; char c;
-        assertEq(parseNumber(ss).str(), "1"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "2"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "-3"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "123"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "456"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "78912301"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "+inf"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "-inf"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "+inf"); assert(ss.get(c) && c == ' ');
-        assertEq(parseNumber(ss).str(), "-120941421241241"); assert(ss.get(c) && c == ' ');
+        std::stringstream ss { "1 +2 -3 123 456 78912301 inf -inf +inf -1209414212 -120941421241241 "}; char c;
+        assertEq(parseNumber(ss).str(), "1"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "2"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "-3"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "123"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "456"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "78912301"); //assert(ss.get(c) && c == ' ');
+        assertEq(parseNumber(ss).str(), "+inf");
+        assertEq(parseNumber(ss).str(), "-inf");
+        assertEq(parseNumber(ss).str(), "+inf");
+        assertEq(parseNumber(ss).str(), "-1209414212");
+        assertThrows<IntegerOverflow>([&](){ assertEq(parseNumber(ss).str(), "-120941421241241"); });
     }
 
     static Fraction parseExpr (std::istream& is) {
