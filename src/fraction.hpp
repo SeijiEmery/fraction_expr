@@ -305,28 +305,29 @@ protected:
             enforce<Ex>((bool)is.get(c));
     }
     static void unittest_skipSpace () {
-        std::stringstream ss { "f  a\t w\tl\nab  \n\tl "};
-        char c = ss.peek();
-        assertEq((char)ss.peek(), 'f'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'f'); ss.get(c);
-        assertEq((char)ss.peek(), ' '); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'a'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'a'); ss.get(c);
-        assertEq((char)ss.peek(), '\t'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'w'); ss.get(c);
-        assertEq((char)ss.peek(), '\t'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'l'); ss.get(c);
-        assertEq((char)ss.peek(), '\n'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'a'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'a'); ss.get(c);
-        assertEq((char)ss.peek(), 'b'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'b'); ss.get(c);
-        assertEq((char)ss.peek(), ' '); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'l'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), 'l'); ss.get(c);
-        assertEq((char)ss.peek(), ' '); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), '\0'); skipSpace<ExpectedExpr>(ss, c);
-        assertEq((char)ss.peek(), '\0');
+        std::stringstream ss { "f  a\t w\tl\nab  \n\tl " };
+        char c = ss.peek();             assertEq(c, 'f');  assertEq((char)ss.peek(), 'f');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'f');  assertEq((char)ss.peek(), 'f');
+        ss.get(c);                      assertEq(c, 'f');  assertEq((char)ss.peek(), ' ');
+        ss.get(c);                      assertEq(c, ' ');  assertEq((char)ss.peek(), ' ');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'a');  assertEq((char)ss.peek(), '\t');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'a');  assertEq((char)ss.peek(), '\t');
+        ss.get(c);                      assertEq(c, '\t'); assertEq((char)ss.peek(), ' ');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'w');  assertEq((char)ss.peek(), '\t');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'w');  assertEq((char)ss.peek(), '\t');
+        ss.get(c);                      assertEq(c, '\t'); assertEq((char)ss.peek(), 'l');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'l');  assertEq((char)ss.peek(), '\n');
+        ss.get(c);                      assertEq(c, '\n'); assertEq((char)ss.peek(), 'a');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'a');  assertEq((char)ss.peek(), 'b');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'a');  assertEq((char)ss.peek(), 'b');
+        ss.get(c);                      assertEq(c, 'b');  assertEq((char)ss.peek(), ' ');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'b');  assertEq((char)ss.peek(), ' ');
+        ss.get(c);                      assertEq(c, ' ');  assertEq((char)ss.peek(), ' ');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'l');  assertEq((char)ss.peek(), ' ');
+        skipSpace<ExpectedExpr>(ss, c); assertEq(c, 'l');  assertEq((char)ss.peek(), ' ');
+        ss.get(c);                      assertEq(c, ' ');  assertEq((char)ss.peek(), '\377');
+        assertThrows<ExpectedExpr>([&](){ skipSpace<ExpectedExpr>(ss, c); }); //assertEq(c, '\377');
+        assertThrows<ExpectedExpr>([&](){ skipSpace<ExpectedExpr>(ss, c); }); //assertEq(c, '\377');
     }
 
     static Fraction parseNumber (std::istream& is) {
