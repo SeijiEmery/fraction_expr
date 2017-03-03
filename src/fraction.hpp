@@ -40,10 +40,12 @@ struct Fraction {
     int    d;
 
     Fraction (int n = 0, int d = 1) : n(n), d(d) {
-        if (d != 0) {
-            auto cf = gcd(abs(n), abs(d));
-            if (cf) {
-                std::cout << "Reducing " << n << "/" << d;
+        if (this->d < 0) { this->d = -this->d; this->n = -this->n; }
+        if (this->d > 1) {
+            auto cf = gcd(abs(this->n), this->d);
+            assert(cf >= 1);
+            if (cf > 1) {
+                std::cout << "Reducing " << this->n << "/" << this->d;
                 this->n /= cf;
                 this->d /= cf;
                 std::cout << " to " << this->n << "/" << this->d << '\n';
