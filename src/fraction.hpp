@@ -45,10 +45,10 @@ struct Fraction {
             auto cf = gcd(abs(this->n), this->d);
             assert(cf >= 1);
             if (cf > 1) {
-                std::cout << "Reducing " << this->n << "/" << this->d;
+//                std::cout << "Reducing " << this->n << "/" << this->d;
                 this->n /= cf;
                 this->d /= cf;
-                std::cout << " to " << this->n << "/" << this->d << '\n';
+//                std::cout << " to " << this->n << "/" << this->d << '\n';
             }
         }
     }
@@ -214,7 +214,9 @@ struct Fraction {
         RUN_TEST(unittest_resolveExpr);
         RUN_TEST(unittest_flushOps);
         RUN_TEST(unittest_parseExpr);
-
+        RUN_TEST(unittest_Fraction);
+    }
+    static void unittest_Fraction () {
         assertEq(Fraction{ 4, 0 }, Fraction{ 9, 0 });
         assertEq(Fraction{ 0, 4 }, Fraction{ 0, 9 });
 
@@ -227,7 +229,7 @@ struct Fraction {
         assertEq(Fraction{ 4, 6 }.n, 2);
         assertEq(Fraction{ 4, 6 }.d, 3);
         assertEq(Fraction{ 4, 6 }.str(), "2/3");
-        assertEq(Fraction("2/3").n, Fraction(2,3));
+        assertEq(Fraction("2/3"), Fraction(2,3));
         
         assertEq(Fraction(1,0).str(), "+inf");
         assertEq(Fraction(-1,0).str(), "-inf");
@@ -399,34 +401,55 @@ protected:
         assert(is.good());
 
         char c;
+        int parenDepth = 0;
         while (1) {
             enforce<ExpectedExpr>(is.get(c));
             skipSpace<ExpectedExpr>(is, c);
 
             switch (c) {
-                case '(': ops.push_back(MAKE_OP('(', 1)); break;
-                case ')': 
+                case '(': ++parenDepth; ops.push_back(MAKE_OP('(', 3)); break;
+                case ')':
+                    enforce<UnbalancedRParen>(--parenDepth >= 0);
                     while (enforce<UnbalancedRParen>(ops.size() != 0), GET_OP(ops.back()) != '(') {
                         resolveExpr(terms, ops);
                     }
                     ops.pop_back();
-                    if (ops.size() == 0) {
+                    if (parenDepth == 0)
+                        return terms.size() ? terms[0] : Fraction{ 0, 0 };
+                    
+                    if (ops.size() == 0 || parenDepth == 0) {
                         enforce<UnbalancedExpr>(terms.size() == 1);
                         return terms[0];
                     }
                     break;
-                case '+': flushOps(terms, ops, '+', 1); break;
-                case '-': flushOps(terms, ops, '-', 1); break;
+                case '+':
+                    if (terms.size() == 0) { is.unget(); terms.push_back(parseNumber(is)); }
+                    else                   { flushOps(terms, ops, '+', 2); }
+                    break;
+                case '-':
+                    if (terms.size() == 0) { is.unget(); terms.push_back(parseNumber(is)); }
+                    else                   { flushOps(terms, ops, '-', 2); }
+                    break;
                 case '*': flushOps(terms, ops, '*', 1); break;
                 case '/': flushOps(terms, ops, '/', 1); break;
                 default:
                     is.unget();
-                    parseNumber(is);
+                    terms.push_back(parseNumber(is));
             }
         }
     }
     static void unittest_parseExpr () {
-        // TBD
+        std::stringstream ss { "(-inf) (1)  (1+1)  (2*2)  (3/2)  (4+2+4)  (2/2+3)  (2/3-4/5)  (1-1/4)  ((1+2)/(3+4))" };
+        assertEq(parseExpr(ss).str(), "-inf");
+        assertEq(parseExpr(ss).str(), "1");
+        assertEq(parseExpr(ss).str(), "2");
+        assertEq(parseExpr(ss).str(), "4");
+        assertEq(parseExpr(ss).str(), "1+1/2");
+        assertEq(parseExpr(ss).str(), "10");
+        assertEq(parseExpr(ss).str(), "4");
+        assertEq(parseExpr(ss).str(), "-2/15");
+        assertEq(parseExpr(ss).str(), "3/4");
+        assertEq(parseExpr(ss).str(), "3/7");
     }
 
     static void resolveExpr (std::vector<Fraction>& terms, std::vector<int>& ops) {
